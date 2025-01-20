@@ -1,0 +1,110 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type Point struct {
+	X, Y int
+}
+
+func parseInput() ([][]int, Point, Point, error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	size := strings.Fields(scanner.Text())
+	height, _ := strconv.Atoi(size[0])
+	width, _ := strconv.Atoi(size[1])
+
+	labyrinth := make([][]int, height)
+	for i := 0; i < height; i++ {
+		scanner.Scan()
+		row := strings.Fields(scanner.Text())
+		labyrinth[i] = make([]int, width)
+		for j, cell := range row {
+			labyrinth[i][j], _ = strconv.Atoi(cell)
+		}
+	}
+
+	scanner.Scan()
+	startEnd := strings.Fields(scanner.Text())
+	start := Point{X: atoi(startEnd[0]), Y: atoi(startEnd[1])}
+	end := Point{X: atoi(startEnd[2]), Y: atoi(startEnd[3])}
+
+	return labyrinth, start, end, nil
+}
+
+func atoi(s string) int {
+	num, _ := strconv.Atoi(s)
+	return num
+}
+
+func bfs(labyrinth [][]int, start, end Point) ([]Point, error) {
+	height := len(labyrinth)
+	width := len(labyrinth[0])
+	directions := []Point{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+
+	visited := make([][]bool, height)
+	for i := range visited {
+		visited[i] = make([]bool, width)
+	}
+	prev := make(map[Point]*Point)
+
+	queue := []Point{start}
+	visited[start.X][start.Y] = true
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if current == end {
+			break
+		}
+
+		for _, d := range directions {
+			next := Point{X: current.X + d.X, Y: current.Y + d.Y}
+			if next.X < 0 || next.X >= height || next.Y < 0 || next.Y >= width {
+				continue
+			}
+			if labyrinth[next.X][next.Y] == 0 || visited[next.X][next.Y] {
+				continue
+			}
+
+			queue = append(queue, next)
+			visited[next.X][next.Y] = true
+			prev[next] = &current
+		}
+	}
+
+	if !visited[end.X][end.Y] {
+		return nil, fmt.Errorf("no path found")
+	}
+
+	path := []Point{}
+	for p := &end; p != nil; p = prev[*p] {
+		path = append([]Point{*p}, path...)
+	}
+	return path, nil
+}
+
+func main() {
+	labyrinth, start, end, err := parseInput()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	path, err := bfs(labyrinth, start, end)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	for _, p := range path {
+		fmt.Printf("%d %d\n", p.X, p.Y)
+	}
+	fmt.Println(".")
+}
